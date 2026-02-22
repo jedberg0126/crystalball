@@ -1,5 +1,7 @@
 fastapi
 uvicorn
+jinja2
 sqlalchemy
+requests
 apscheduler
-pydantic
+python-multipart
