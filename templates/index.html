@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CRYSTALBALL</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #e0f0ff; /* baby blue background */
+            color: #3a1f00; /* bronze text */
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: #a0c4ff; /* darker baby blue */
+            padding: 20px;
+            text-align: center;
+            font-size: 2em;
+            font-weight: bold;
+        }
+        .feed {
+            max-width: 800px;
+            margin: 20px auto;
+        }
+        .headline {
+            background-color: #f9f9f9;
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .headline:hover {
+            background-color: #d0e4ff;
+        }
+        .label {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .article {
+            background-color: #ffffff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            display: none;
+        }
+        .section {
+            font-size: 0.9em;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <header>CRYSTALBALL</header>
+    <div class="feed" id="feed"></div>
+
+    <script>
+        // Request notification permission
+        if ("Notification" in window) {
+            if (Notification.permission !== "granted") {
+                Notification.requestPermission();
+            }
+        } else {
+            alert("Your browser does not support desktop notifications.");
+        }
+
+        function showNotification(title, body) {
+            if (Notification.permission === "granted") {
+                new Notification(title, {
+                    body: body,
+                    icon: "https://upload.wikimedia.org/wikipedia/en/0/0d/Washington_Wizards_logo.svg"
+                });
+            }
+        }
+
+        async function loadFeed() {
+            const res = await fetch('/feed');
+            const data = await res.json();
+            const feedDiv = document.getElementById('feed');
+            feedDiv.innerHTML = '';
+
+            // Keep track of already notified articles
+            let notified = JSON.parse(localStorage.getItem("notified") || "[]");
+
+            data.forEach(article => {
+                // Show notification if LIKELY or TRENDING and not already notified
+                if (!notified.includes(article.id) && (article.label === "LIKELY" || article.label === "TRENDING")) {
+                    showNotification(article.headline, "Check the latest prediction!");
+                    notified.push(article.id);
+                    localStorage.setItem("notified", JSON.stringify(notified));
+                }
+
+                const headlineDiv = document.createElement('div');
+                headlineDiv.className = 'headline';
+                headlineDiv.innerHTML = `<span class="label">${article.label}:</span> ${article.headline} <div class="section">${article.section}</div>`;
+
+                const articleDiv = document.createElement('div');
+                articleDiv.className = 'article';
+                articleDiv.id = 'article-' + article.id;
+
+                headlineDiv.onclick = async () => {
+                    if (articleDiv.style.display === 'block') {
+                        articleDiv.style.display = 'none';
+                    } else {
+                        const res = await fetch(`/article/${article.id}`);
+                        const full = await res.json();
+                        articleDiv.innerHTML = `<p>${full.body_paragraph_1}</p><p>${full.body_paragraph_2}</p>`;
+                        articleDiv.style.display = 'block';
+                    }
+                };
+
+                feedDiv.appendChild(headlineDiv);
+                feedDiv.appendChild(articleDiv);
+            });
+        }
+
+        loadFeed();
+        // Optional: refresh feed every 5 minutes
+        setInterval(loadFeed, 5 * 60 * 1000);
+    </script>
+</body>
+</html>
